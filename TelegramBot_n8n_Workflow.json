@@ -1,0 +1,1006 @@
+{
+  "name": "Telebot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1400,
+        -200
+      ],
+      "id": "aa2e5d71-2c73-4693-9805-1757ac0e64ce",
+      "name": "Telegram Trigger",
+      "webhookId": "",
+      "credentials": {
+        "telegramApi": {
+          "id": "__REPLACE__",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.weatherapi.com/v1/current.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.message.text }}"
+            },
+            {
+              "name": "key",
+              "value": "={{ $vars.WEATHER_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -200,
+        -200
+      ],
+      "id": "260a1714-e5f3-4a20-93fe-c9d9d916966d",
+      "name": "Weather API",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://www.alphavantage.co/query",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "function",
+              "value": "GLOBAL_QUOTE"
+            },
+            {
+              "name": "symbol",
+              "value": "={{ $json.bestMatches[0]['1. symbol'] }}"
+            },
+            {
+              "name": "apikey",
+              "value": "={{ $vars.STOCKS_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -100,
+        40
+      ],
+      "id": "45cab183-e4d4-4759-9de7-f069ac044a8f",
+      "name": "Company price API",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://www.alphavantage.co/query",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "function",
+              "value": "SYMBOL_SEARCH"
+            },
+            {
+              "name": "keywords",
+              "value": "={{ $json.message.text }}"
+            },
+            {
+              "name": "apikey",
+              "value": "={{ $vars.STOCKS_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -260,
+        40
+      ],
+      "id": "e04e5429-c291-4f4f-b009-b0abf809e8ca",
+      "name": "Symbol Company API",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a2ee1d4-4ef2-443b-b888-c1e6d2fe03f7",
+              "name": "message.chat.id",
+              "value": "={{ $json.message?.chat?.id ?? $json.callback_query?.message?.chat?.id }}",
+              "type": "string"
+            },
+            {
+              "id": "95de9989-e135-4cca-9b11-d8124738e5cd",
+              "name": "message.from.username",
+              "value": "={{ $json.message?.from?.username ?? $json.callback_query?.from?.username }}",
+              "type": "string"
+            },
+            {
+              "id": "879fbe5b-8862-4c92-916d-4d7a39baf64a",
+              "name": "message.from.id",
+              "value": "={{ $json.message?.from?.id ?? $json.callback_query?.from?.id }}",
+              "type": "string"
+            },
+            {
+              "id": "d88491d9-942a-47ae-b919-bf073eac602d",
+              "name": "message.text",
+              "value": "={{ $json.message?.text ?? \"\"}}",
+              "type": "string"
+            },
+            {
+              "id": "1e8c7c97-67cf-4aee-8df9-513417a72063",
+              "name": "mode",
+              "value": "={{ $json.callback_query?.data ?? \"\"}}",
+              "type": "string"
+            },
+            {
+              "id": "beb3c3d4-6a39-40b3-b687-b70062a1b100",
+              "name": "message.date",
+              "value": "={{ $json.message?.date ?? $json.callback_query?.message?.date }}",
+              "type": "string"
+            },
+            {
+              "id": "c624294a-85a5-456a-aca9-0081f4dbaf9f",
+              "name": "Last Action",
+              "value": "={{ $json[\"Last Action\"] ?? \"—\"}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -660,
+        -360
+      ],
+      "id": "c286b041-051c-4856-978b-34b332aaeab0",
+      "name": "Save Context"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "python",
+        "pythonCode": "item = _input.item\n\nitem.json.prompt_msg = \"Нажми одну из кнопок ниже, чтобы выбрать, что ты хочешь узнать:\"\nkeyboard = True\nmode = item.json.get(\"mode\")\ntext = item.json.get(\"message\").get(\"text\")\nlast_action = item.json.get(\"Last Action\")\n\nif mode and not text:\n  weather_msg = \"Для того чтобы я мог сообщить тебе погоду, введи, пожалуйста, свой город.\"\n  stock_msg = \"Напиши название компании, для которой ты хочешь узнать стоимость акций.\"\n  answer_msg = weather_msg if mode == 'weather' else stock_msg\n  keyboard = False\nelif last_action == \"weather\":\n  city = item.json.get(\"location\", {}).get(\"name\")\n  temp = item.json.get(\"current\", {}).get(\"temp_c\")\n  if temp and temp >= 15:\n    answer_msg = f\"Сегодня в {city} {temp:.2f} градусов, отличный день, можно бегать в футболке.\"\n  elif temp and temp < 15:\n    answer_msg = f\"Сегодня в {city} температура {temp:.2f} градусов, холодно, одень куртку\"\n  else:\n    answer_msg = \"Не удалось получить данные о погоде.\"\nelif last_action == \"stocks\":\n  stocks_data = item.json.get(\"Global Quote\", {})\n  symbol = stocks_data.get(\"01. symbol\")\n  price = stocks_data.get(\"05. price\")\n  answer_msg = f\"Текущая цена акций {symbol}: ${float(price):.2f}\" if symbol and price else \"Не удалось получить данные о цене акций.\"\nelif last_action == \"—\":\n  answer_msg = f\"🌤 Погоду или 📈 акции. Используйте кнопки под сообщением.\"\nelse:\n  answer_msg = \"\"\nitem.json.answer_msg = answer_msg\nitem.json.keyboard = keyboard\nreturn item"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        -180
+      ],
+      "id": "a2f87ba7-f949-4714-bbe4-e067d3ed45fd",
+      "name": "Prepare answer"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        100,
+        -120
+      ],
+      "id": "6250a10e-9cf0-4f14-a6b6-9e4622f297b4",
+      "name": "Merge data from API",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9523e815-bd88-4bd5-8e20-3c1712b67773",
+              "name": "readable_date",
+              "value": "={{new Date($json[\"message\"][\"date\"] * 1000).toLocaleString(\"ru-RU\", { timeZone: \"Europe/Kyiv\" }).replace(\",\", \"\") }}",
+              "type": "string"
+            },
+            {
+              "id": "66e328e9-6d09-4941-b15f-c10b4d573d91",
+              "name": "user",
+              "value": "={{ $json.message.from.username}}",
+              "type": "string"
+            },
+            {
+              "id": "71ef0ee7-e425-4d3c-9a72-db1bc1126c8f",
+              "name": "user_id",
+              "value": "={{ $json.message.from.id }}",
+              "type": "string"
+            },
+            {
+              "id": "5fef524e-94da-4d57-a8fc-9a352ce96a16",
+              "name": "chat_id",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "string"
+            },
+            {
+              "id": "ce2ecebf-2ae8-4ec1-847d-3c22dc8766a0",
+              "name": "action",
+              "value": "={{ $json.mode && $json.mode !== \"\" ? $json.mode : \"—\" }}",
+              "type": "string"
+            },
+            {
+              "id": "654a19a9-a2ca-41c9-b98d-fb37b149c7ec",
+              "name": "query",
+              "value": "={{ $json.message.text && $json.message.text !== \"\" ? $json.message.text : \"—\" }}",
+              "type": "string"
+            },
+            {
+              "id": "6e1bd5c3-706b-4b72-9a69-ba69bf1211eb",
+              "name": "=weather",
+              "value": "={{ $json.current?.temp_c !== undefined ? Math.round($json.current.temp_c) + \"°C\" : \"—\" }}",
+              "type": "string"
+            },
+            {
+              "id": "9eaf06db-20a5-497e-b26d-265ac4efde2a",
+              "name": "stock_symbol",
+              "value": "={{ $json[\"Global Quote\"]?.[\"01. symbol\"] ?? \"—\" }}",
+              "type": "string"
+            },
+            {
+              "id": "86ff6d12-f3e7-45b9-bb15-ebe0ff73312a",
+              "name": "price",
+              "value": "={{ $json[\"Global Quote\"]?.[\"05. price\"] ?? \"—\" }}",
+              "type": "string"
+            },
+            {
+              "id": "bf5f1375-23ab-4642-b44f-5b1541f49d19",
+              "name": "answer",
+              "value": "={{ $json.answer_msg && $json.answer_msg !== \"\" ? $json.answer_msg : \"Нажми одну из кнопок ниже, чтобы выбрать, что ты хочешь узнать:\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        -80
+      ],
+      "id": "ac90dc9d-44fb-4fd9-a47a-d2eb54fc8ad4",
+      "name": "Set Log"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $vars.SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $vars.USER_ACTION_SHEET_NAME }}",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "=User ID",
+              "lookupValue": "={{ $json.message?.from?.id ?? $json.callback_query?.from?.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -1100,
+        -380
+      ],
+      "id": "d474ead1-ffef-432d-a965-efd626830b92",
+      "name": "Get mode from log",
+      "executeOnce": false,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "__REPLACE__",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $vars.SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{$vars.LOGLIST_SHEET_NAME}}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.readable_date }}",
+            "User": "={{ $json.user }}",
+            "User ID": "={{ $json.user_id }}",
+            "Action": "={{ $json.action }}",
+            "Query": "={{ $json.query }}",
+            "Weather": "={{ $json.weather }}",
+            "Stock Symbol": "={{ $json.stock_symbol }}",
+            "Price": "={{ $json.price }}",
+            "Chat ID": "={{ $json.chat_id }}",
+            "Answer": "={{ $json.answer }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "User",
+              "displayName": "User",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chat ID",
+              "displayName": "Chat ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Action",
+              "displayName": "Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Query",
+              "displayName": "Query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Weather",
+              "displayName": "Weather",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Stock Symbol",
+              "displayName": "Stock Symbol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Price",
+              "displayName": "Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Answer",
+              "displayName": "Answer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        660,
+        20
+      ],
+      "id": "702b342c-e60d-4eb3-8d3b-4882da09c9a2",
+      "name": "Append in loglist",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "__REPLACE__",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $vars.SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $vars.USER_ACTION_SHEET_NAME }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User ID": "={{ $json[\"User ID\"] }}",
+            "Last Action": "={{ $json.Action }}"
+          },
+          "matchingColumns": [
+            "User ID"
+          ],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Last Action",
+              "displayName": "Last Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        940,
+        20
+      ],
+      "id": "f080aad5-eae0-4f26-ac55-ca51130ed3b6",
+      "name": "Update last action",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "__REPLACE__",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "394e60fc-373c-4d5a-9c31-01dfde28ff65",
+                    "leftValue": "={{ $json.mode !== \"\" || (!$json[\"Last Action\"] || $json[\"Last Action\"] === \"—\" || $json[\"text\"] === \"\") }}",
+                    "rightValue": "—",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Unclear request or button"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json[\"Last Action\"] }}",
+                    "rightValue": "weather",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "bab43d33-bae6-4146-adb5-aca4980d321f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "weather"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "052c432f-2c92-4e98-86c0-9dc843bb69b6",
+                    "leftValue": "={{ $json[\"Last Action\"] }}",
+                    "rightValue": "stocks",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "stocks"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -480,
+        -220
+      ],
+      "id": "66947f37-3b02-456f-b9cf-4519a3389daf",
+      "name": "Last Action"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "={{ $json.answer_msg }}",
+        "replyMarkup": "=none",
+        "forceReply": {},
+        "replyKeyboardOptions": {},
+        "replyKeyboardRemove": {},
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        -160
+      ],
+      "id": "0f6ea3c5-1f29-4d1a-a735-aeae9e0c53d2",
+      "name": "Telegram message",
+      "webhookId": "",
+      "notesInFlow": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "__REPLACE__",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "={{ $json.answer_msg }}{{ $json.answer_msg ? \"\\n\\n\" : \"\" }}{{ $json.prompt_msg}}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🌍 Погода",
+                    "additionalFields": {
+                      "callback_data": "weather"
+                    }
+                  },
+                  {
+                    "text": "💹 Акции",
+                    "additionalFields": {
+                      "callback_data": "stocks"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        -320
+      ],
+      "id": "04820e05-5224-444f-9226-c8165f92ec5c",
+      "name": "Message with keyboard",
+      "webhookId": "",
+      "notesInFlow": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "__REPLACE__",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -900,
+        -360
+      ],
+      "id": "86b1e825-537f-48ea-b26b-b97930228e0e",
+      "name": "Merge request and last_action",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f3a53317-93c0-4d81-833e-ebf5c14a49ff",
+              "leftValue": "={{$json[\"message\"] && $json[\"message\"][\"text\"]}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1240,
+        -200
+      ],
+      "id": "84dc762c-d04c-43ea-af9a-31657362aa40",
+      "name": "If exist text"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f3a53317-93c0-4d81-833e-ebf5c14a49ff",
+              "leftValue": "={{ $json.keyboard }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        -260
+      ],
+      "id": "5611b0fd-eaa5-4acf-a788-693b81aa8e71",
+      "name": "If exist keyboard"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If exist text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather API": {
+      "main": [
+        [
+          {
+            "node": "Merge data from API",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Company price API": {
+      "main": [
+        [
+          {
+            "node": "Merge data from API",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Symbol Company API": {
+      "main": [
+        [
+          {
+            "node": "Company price API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Context": {
+      "main": [
+        [
+          {
+            "node": "Merge data from API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Last Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge data from API": {
+      "main": [
+        [
+          {
+            "node": "Prepare answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare answer": {
+      "main": [
+        [
+          {
+            "node": "If exist keyboard",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Log": {
+      "main": [
+        [
+          {
+            "node": "Append in loglist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get mode from log": {
+      "main": [
+        [
+          {
+            "node": "Merge request and last_action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append in loglist": {
+      "main": [
+        [
+          {
+            "node": "Update last action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Last Action": {
+      "main": [
+        [
+          {
+            "node": "Prepare answer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Weather API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Symbol Company API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram message": {
+      "main": [
+        []
+      ]
+    },
+    "Merge request and last_action": {
+      "main": [
+        [
+          {
+            "node": "Save Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If exist text": {
+      "main": [
+        [
+          {
+            "node": "Get mode from log",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge request and last_action",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Save Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If exist keyboard": {
+      "main": [
+        [
+          {
+            "node": "Message with keyboard",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e71942a4-dd08-4755-8c52-14042033aded",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b1462659ea6c803aef13e4ac49cf75975812d4c7246f8991578cefbc8d6292ce"
+  },
+  "id": "meUb1x1f9f26sV4M",
+  "tags": []
+}
